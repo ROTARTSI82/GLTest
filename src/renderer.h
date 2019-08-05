@@ -18,18 +18,12 @@ std::unordered_map<std::string, GLuint> SHADER_TYPES = {
         {"vertex-shader",   GL_VERTEX_SHADER}
 };
 
-void flushGLErrors();
-
-class VertexBuffer {
-public:
-    GLuint id;
-
-    VertexBuffer(GLsizeiptr size, const GLvoid *data, GLenum usage);
-
-    void bind() const;
-
-    void unbind() const;
+std::unordered_map<GLenum, GLsizei> SIZES = {
+        {GL_FLOAT,        sizeof(GLfloat)},
+        {GL_UNSIGNED_INT, sizeof(GLuint)}
 };
+
+void flushGLErrors();
 
 class IndexBuffer {
 public:
@@ -45,6 +39,48 @@ public:
     void draw(GLenum mode) const;
 };
 
-unsigned int setShaderProfile(const std::string &path);
+struct VBAttribute {
+public:
+    GLint count;
+    GLenum type;
+    GLboolean normalized;
+    GLsizei pointer;
+};
 
-unsigned int compileShader(const std::string &type, const std::string &src, const std::string &fullpath);
+class VBLayout {
+public:
+    std::vector<VBAttribute> attribs;
+    GLsizei stride = 0;
+
+    VBLayout() = default;
+
+    void addAttribute(GLint count, GLenum type, GLboolean normalized);
+};
+
+class VertexArray {
+public:
+    GLuint id;
+
+    VertexArray();
+
+    void bind() const;
+
+    void unbind() const;
+};
+
+class VertexBuffer {
+public:
+    GLuint id;
+
+    VertexBuffer(GLsizeiptr size, const GLvoid *data, GLenum usage);
+
+    void bind() const;
+
+    void unbind() const;
+
+    void setLayout(VBLayout layout, VertexArray vertArr);
+};
+
+GLuint setShaderProfile(const std::string &path);
+
+GLuint compileShader(const std::string &type, const std::string &src, const std::string &fullpath);

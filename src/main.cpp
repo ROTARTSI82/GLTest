@@ -1,4 +1,4 @@
-#include "renderer.h"
+#include "renderer.cpp"
 
 int main(void) {
 //    std::uniform_real_distribution<double> unif(0, 1);
@@ -68,26 +68,30 @@ int main(void) {
             1, 5, 2, 6, 3, 7, 4, 0
     };
 
-    unsigned int vao;
-    glGenVertexArrays(1, &vao);
-    glBindVertexArray(vao);
+    VertexArray vb;
+    vb.bind();
+
+    VBLayout layout;
+    layout.addAttribute(3, GL_FLOAT, false);
 
     VertexBuffer buf(sizeof(pos), pos, GL_STATIC_DRAW);
     buf.bind();
 
-    glEnableVertexAttribArray(0);
+    buf.setLayout(layout, vb);
+
+//    glEnableVertexAttribArray(0);
     // set the attribute that can be accessed at index 0 by the shader
     // to be the vertex position that contains 2 GL_FLOATs,
     // is already normalized so we dont have to normalize it again (GL_FALSE),
-    // and the size of the entire vertex (including other attribs) in bytes is (sizeof(float) * 2),
+    // and the count of the entire vertex (including other attribs) in bytes is (sizeof(float) * 2),
     //  The position attribute begins 0 bytes into each vert.
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *) 0);
+//    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *) 0);
 
     IndexBuffer ibo(24, index, GL_STATIC_DRAW);
 
     IndexBuffer lineIBO(24, lineIndex, GL_STATIC_DRAW);
 
-    unsigned int pgm = setShaderProfile("./res/shaders/default");
+    GLuint pgm = setShaderProfile("./res/shaders/default");
     if (pgm != 0) {
         glUseProgram(pgm);
     }

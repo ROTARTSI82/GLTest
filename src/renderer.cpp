@@ -49,7 +49,7 @@ void IndexBuffer::unbind() const {
 }
 
 
-unsigned int compileShader(const std::string &type, const std::string &src, const std::string &fullpath) {
+GLuint compileShader(const std::string &type, const std::string &src, const std::string &fullpath) {
     GLenum shadertype;
     if (SHADER_TYPES.find(type) != SHADER_TYPES.end()) {
         shadertype = SHADER_TYPES[type];
@@ -80,7 +80,7 @@ unsigned int compileShader(const std::string &type, const std::string &src, cons
     return shader;
 }
 
-unsigned int setShaderProfile(const std::string &path) {
+GLuint setShaderProfile(const std::string &path) {
     std::string profilePath = path + "/shaders.meta";
     std::ifstream metadat(profilePath);
 
@@ -136,5 +136,33 @@ unsigned int setShaderProfile(const std::string &path) {
     std::cout << "Successfully loaded shader program from " << profilePath << std::endl;
 
     return prgm;
+}
 
+VertexArray::VertexArray() {
+    glGenVertexArrays(1, &id);
+    glBindVertexArray(id);
+}
+
+void VertexArray::bind() const {
+    glBindVertexArray(id);
+}
+
+void VertexArray::unbind() const {
+    glBindVertexArray(0);
+}
+
+void VBLayout::addAttribute(GLint count, GLenum type, GLboolean normalized) {
+    attribs.push_back({count, type, normalized, stride});
+    stride += SIZES[type] * count;
+}
+
+void VertexBuffer::setLayout(VBLayout layout, VertexArray vertArr) {
+    vertArr.bind();
+
+    for (int i = 0; i < layout.attribs.size(); i++) {
+        VBAttribute attrib = layout.attribs.at(i);
+        glEnableVertexAttribArray(i);
+        glVertexAttribPointer(i, attrib.count, attrib.type, attrib.normalized, layout.stride,
+                              (const void *) attrib.pointer);
+    }
 }
