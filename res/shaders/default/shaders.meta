@@ -1,0 +1,7 @@
+# This file is a list of shaders and their types.
+
+# Multiple shaders of the same type are supported. Just define it using
+# shaderType: file.shader
+
+vertex-shader: vertex.shader
+fragment-shader: fragment.shader
