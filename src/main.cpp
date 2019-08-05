@@ -1,134 +1,4 @@
-#include <GL/glew.h>
-#include <GLFW/glfw3.h>
-
-#include <iostream>
-//#include <random>
-#include <fstream>
-#include <string>
-#include <sstream>
-#include <unordered_map>
-#include <vector>
-
-using namespace std;
-
-unordered_map<string, unsigned int> SHADER_TYPES = {
-        {"fragment-shader", GL_FRAGMENT_SHADER},
-        {"vertex-shader",   GL_VERTEX_SHADER}
-};
-
-static void flushGLErrors() {
-    GLenum err = glGetError();
-    while (err != GL_NO_ERROR) {
-        cerr << "[OpenGL ERROR]: 0x" << hex << err << endl;
-        err = glGetError();
-    }
-}
-
-static unsigned int compileShader(const string &type, const string &src, const string &fullpath) {
-    unsigned int shadertype;
-    if (SHADER_TYPES.find(type) != SHADER_TYPES.end()) {
-        shadertype = SHADER_TYPES[type];
-    } else {
-        cerr << "Invalid shader type: " << type << " // Skipping..." << endl;
-        return 0;
-    }
-
-    unsigned int shader = glCreateShader(shadertype);
-    const char *rsrc = src.c_str();
-
-    glShaderSource(shader, 1, &rsrc, nullptr);
-    glCompileShader(shader);
-
-    int result;
-    glGetShaderiv(shader, GL_COMPILE_STATUS, &result);
-    if (result == GL_FALSE) {
-        cerr << "Error compiling " << type << " from " << fullpath << endl;
-        int len;
-        glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &len);
-        char msg[len];
-        glGetShaderInfoLog(shader, len, &len, msg);
-        cerr << msg << endl;
-        glDeleteShader(shader);
-        return 0;
-    }
-
-    return shader;
-}
-
-//static unsigned int setShaders(const string &vertSrc, const string &fragSrc) {
-//    unsigned int program = glCreateProgram();
-//    unsigned int vertShader = compileShader(GL_VERTEX_SHADER, vertSrc);
-//    unsigned int fragShader = compileShader(GL_FRAGMENT_SHADER, fragSrc);
-//
-//    glAttachShader(program, vertShader);
-//    glAttachShader(program, fragShader);
-//
-//    glLinkProgram(program);
-//    glValidateProgram(program);
-//
-//    glDeleteShader(fragShader);
-//    glDeleteShader(vertShader);
-//
-//    return program;
-//}
-
-static unsigned int setShaderProfile(const string &path) {
-    string profilePath = path + "/shaders.meta";
-    ifstream metadat(profilePath);
-
-    string line;
-    unsigned int prgm = glCreateProgram();
-    vector<unsigned int> shaders;
-
-    if (!metadat.is_open()) {
-        cerr << "Failed to load shaders: cannot read " << profilePath << endl;
-        return 0;
-    }
-
-    while (getline(metadat, line)) {
-        unsigned long indx = line.find(": ");
-        if (line[0] == '#' ||
-            indx == string::npos) { // comments. Skip lines that don't have colons or contain the # character.
-            continue;
-        }
-        string shaderStrType = line.substr(0, indx);
-        string filename = line.substr(indx + 2);
-        string fullPath = path + "/" + filename;
-
-        string shaderSrc;
-        string shaderln;
-
-        ifstream shaderStream(fullPath);
-
-        if (!shaderStream.is_open()) {
-            cerr << "Failed to load " << shaderStrType << ": cannot read " << fullPath << " // Skipping.." << endl;
-            continue;
-        }
-        while (getline(shaderStream, shaderln)) {
-            shaderSrc.append(shaderln + "\n");
-        }
-
-        // Shader compilation code.
-        unsigned int shader = compileShader(shaderStrType, shaderSrc, fullPath);
-        if (shader != 0) {
-            glAttachShader(prgm, shader);
-            shaders.push_back(shader);
-            cout << "Successfully loaded " << shaderStrType << " from " << fullPath << endl;
-        }
-
-    }
-    glLinkProgram(prgm);
-    glValidateProgram(prgm);
-
-    for (unsigned int s : shaders) {
-        glDeleteShader(s);
-    }
-
-    cout << "Successfully loaded shader program from " << profilePath << endl;
-
-    return prgm;
-
-}
+#include "renderer.h"
 
 int main(void) {
 //    std::uniform_real_distribution<double> unif(0, 1);
@@ -138,7 +8,7 @@ int main(void) {
 
     /* Initialize the library */
     if (!glfwInit()) {
-        cerr << "Failed to initialize GLFW! Stopping..." << endl;
+        std::cerr << "Failed to initialize GLFW! Stopping..." << std::endl;
         return 1;
     }
 
@@ -150,8 +20,8 @@ int main(void) {
     window = glfwCreateWindow(640, 480, "Hello World", NULL, NULL);
 
     if (!window) {
-        cerr << "Failed to create GLFW window! (window=" << window << ")" << endl;
-        cerr << "Stopping!" << endl;
+        std::cerr << "Failed to create GLFW window! (window=" << window << ")" << std::endl;
+        std::cerr << "Stopping!" << std::endl;
         glfwTerminate();
         return 1;
     }
@@ -163,11 +33,11 @@ int main(void) {
     glewExperimental = GL_TRUE; // Needed to use VAOs
     GLenum glewState = glewInit();
     if (glewState != GLEW_OK) {
-        cerr << "Failed to initialize GLEW! (glewInit() returned " << glewState << ")" << endl;
+        std::cerr << "Failed to initialize GLEW! (glewInit() returned " << glewState << ")" << std::endl;
         return 1;
     }
 
-    cout << "Successfully initialized OpenGL (with GLFW & GLEW) version " << glGetString(GL_VERSION) << endl;
+    std::cout << "Successfully initialized OpenGL (with GLFW & GLEW) version " << glGetString(GL_VERSION) << std::endl;
 
     /* Loop until the user closes the window */
     float x = 0.5;
@@ -202,10 +72,8 @@ int main(void) {
     glGenVertexArrays(1, &vao);
     glBindVertexArray(vao);
 
-    unsigned int buf;
-    glGenBuffers(1, &buf);
-    glBindBuffer(GL_ARRAY_BUFFER, buf);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(pos), pos, GL_STATIC_DRAW);
+    VertexBuffer buf(sizeof(pos), pos, GL_STATIC_DRAW);
+    buf.bind();
 
     glEnableVertexAttribArray(0);
     // set the attribute that can be accessed at index 0 by the shader
@@ -215,15 +83,9 @@ int main(void) {
     //  The position attribute begins 0 bytes into each vert.
     glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *) 0);
 
-    unsigned int ibo;
-    glGenBuffers(1, &ibo);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(index), index, GL_STATIC_DRAW);
+    IndexBuffer ibo(24, index, GL_STATIC_DRAW);
 
-    unsigned int lineIBO;
-    glGenBuffers(1, &lineIBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, lineIBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(lineIndex), lineIndex, GL_STATIC_DRAW);
+    IndexBuffer lineIBO(24, lineIndex, GL_STATIC_DRAW);
 
     unsigned int pgm = setShaderProfile("./res/shaders/default");
     if (pgm != 0) {
@@ -239,7 +101,7 @@ int main(void) {
     bool wireframe = false;
 
     if (!wireframe) {
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
+        ibo.bind();
     }
 
     float r = 0;
@@ -254,9 +116,9 @@ int main(void) {
         glColor3f(1.0, 1.0, 1.0);
 
         if (!wireframe) {
-            glDrawElements(GL_QUADS, 24, GL_UNSIGNED_INT, nullptr);
+            ibo.draw(GL_QUADS);
         } else {
-            glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, nullptr);
+            lineIBO.draw(GL_LINES);
         }
 
 
@@ -278,8 +140,8 @@ int main(void) {
     }
 
     glDeleteProgram(pgm);
-
+    flushGLErrors();
     glfwTerminate();
-    cout << "App stopped without errors." << endl;
+    std::cout << "App stopped without errors." << std::endl;
     return 0;
 }
