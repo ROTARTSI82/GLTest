@@ -1,8 +1,7 @@
-varying vec3 normal;
+uniform vec4 u_PMult;
+uniform vec4 u_POffset;
 
 void main()
 {
-	normal = gl_NormalMatrix * gl_Normal;
-	gl_Position = ftransform();
-
+	gl_Position = ftransform() * u_PMult + u_POffset;
 }

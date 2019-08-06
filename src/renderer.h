@@ -23,7 +23,32 @@ std::unordered_map<GLenum, GLsizei> SIZES = {
         {GL_UNSIGNED_INT, sizeof(GLuint)}
 };
 
-void flushGLErrors();
+struct VBAttribute {
+public:
+    GLint count;
+    GLenum type;
+    GLboolean normalized;
+    GLsizei pointer;
+};
+
+class ShaderProgram {
+public:
+
+    std::unordered_map<std::string, GLint> uniforms = {};
+    GLuint id;
+
+    explicit ShaderProgram(const std::string &path);
+
+    void bind() const;
+
+    void unbind() const;
+
+    void setUniform4f(const std::string &name, float f0, float f1, float f2, float f3);
+
+    GLuint compileShader(const std::string &type, const std::string &src, const std::string &fullpath);
+
+    void destroy();
+};
 
 class IndexBuffer {
 public:
@@ -37,14 +62,8 @@ public:
     void unbind() const;
 
     void draw(GLenum mode) const;
-};
 
-struct VBAttribute {
-public:
-    GLint count;
-    GLenum type;
-    GLboolean normalized;
-    GLsizei pointer;
+    void destroy();
 };
 
 class VBLayout {
@@ -66,6 +85,8 @@ public:
     void bind() const;
 
     void unbind() const;
+
+    void destroy();
 };
 
 class VertexBuffer {
@@ -79,8 +100,8 @@ public:
     void unbind() const;
 
     void setLayout(VBLayout layout, VertexArray vertArr);
+
+    void destroy();
 };
 
-GLuint setShaderProfile(const std::string &path);
-
-GLuint compileShader(const std::string &type, const std::string &src, const std::string &fullpath);
+void flushGLErrors();

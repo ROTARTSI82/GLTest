@@ -68,8 +68,8 @@ int main(void) {
             1, 5, 2, 6, 3, 7, 4, 0
     };
 
-    VertexArray vb;
-    vb.bind();
+    VertexArray va;
+    va.bind();
 
     VBLayout layout;
     layout.addAttribute(3, GL_FLOAT, false);
@@ -77,7 +77,7 @@ int main(void) {
     VertexBuffer buf(sizeof(pos), pos, GL_STATIC_DRAW);
     buf.bind();
 
-    buf.setLayout(layout, vb);
+    buf.setLayout(layout, va);
 
 //    glEnableVertexAttribArray(0);
     // set the attribute that can be accessed at index 0 by the shader
@@ -91,16 +91,12 @@ int main(void) {
 
     IndexBuffer lineIBO(24, lineIndex, GL_STATIC_DRAW);
 
-    GLuint pgm = setShaderProfile("./res/shaders/default");
-    if (pgm != 0) {
-        glUseProgram(pgm);
-    }
+    ShaderProgram sp("./res/shaders/default");
+    sp.bind();
 
-    int tint = glGetUniformLocation(pgm, "u_Tint");
-    int mult = glGetUniformLocation(pgm, "u_Mult");
-
-    glUniform4f(tint, 1, 1, 1, 1);
-    glUniform4f(mult, -1, -1, -1, -1);
+    sp.setUniform4f("u_Mult", -1, -1, -1, -1);
+    sp.setUniform4f("u_PMult", 0.5, 0.5, 0.5, 0.5);
+    sp.setUniform4f("u_POffset", 0, 0, 0, 0);
 
     bool wireframe = false;
 
@@ -111,12 +107,14 @@ int main(void) {
     float r = 0;
     float inc = 0.0125;
 
+    glClear(GL_COLOR_BUFFER_BIT);
+
     while (!glfwWindowShouldClose(window)) {
         flushGLErrors();
         /* Render here */
         glClear(GL_COLOR_BUFFER_BIT);
 
-        glRotatef(0.3, 0.1, 0.1, 0.1);
+        glRotatef(1, 0.1, 0.1, 0.1);
         glColor3f(1.0, 1.0, 1.0);
 
         if (!wireframe) {
@@ -140,10 +138,16 @@ int main(void) {
         if (r < 0) {
             inc = 0.0125;
         }
-        glUniform4f(tint, r, 0, 0, 1);
+        sp.setUniform4f("u_Tint", 1 - r, 0, 0, 1);
+        sp.setUniform4f("u_POffset", 0, 0, 0, r);
     }
 
-    glDeleteProgram(pgm);
+    sp.destroy();
+    va.destroy();
+    buf.destroy();
+    ibo.destroy();
+    lineIBO.destroy();
+
     flushGLErrors();
     glfwTerminate();
     std::cout << "App stopped without errors." << std::endl;

@@ -1,5 +1,3 @@
-varying vec3 normal;
-
 uniform vec4 u_Tint;
 uniform vec4 u_Mult;
 
