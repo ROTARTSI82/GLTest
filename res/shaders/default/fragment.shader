@@ -1,9 +1,10 @@
-uniform vec4 u_Tint;
-uniform vec4 u_Mult;
+#version 120
 
+varying vec2 v_TexCoord;
 
-void main()
-{
-	gl_FragColor = gl_Color * u_Mult + u_Tint;
+uniform sampler2D u_Texture;
 
+void main() {
+    gl_FragColor = texture2D(u_Texture, v_TexCoord);
+    //gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0);
 }

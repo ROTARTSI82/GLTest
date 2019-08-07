@@ -4,6 +4,10 @@
 
 #pragma once
 
+#define STB_IMAGE_IMPLEMENTATION
+
+#include <STB/stb_image.h>
+
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
@@ -12,6 +16,11 @@
 #include <fstream>
 #include <vector>
 #include <string>
+
+#include <unistd.h>
+
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 std::unordered_map<std::string, GLuint> SHADER_TYPES = {
         {"fragment-shader", GL_FRAGMENT_SHADER},
@@ -43,7 +52,13 @@ public:
 
     void unbind() const;
 
+    GLint getUniformLoc(const std::string &name);
+
+    void setUniform1i(const std::string &name, int v);
+
     void setUniform4f(const std::string &name, float f0, float f1, float f2, float f3);
+
+    void setUniformMat4f(const std::string &name, glm::mat4 &mat4, GLboolean transpose = GL_FALSE);
 
     GLuint compileShader(const std::string &type, const std::string &src, const std::string &fullpath);
 
@@ -87,6 +102,27 @@ public:
     void unbind() const;
 
     void destroy();
+};
+
+class Texture {
+public:
+    GLenum textureType;
+    GLuint id;
+    std::string fp;
+    unsigned char *localBuf;
+    int width, height, bits;
+
+    explicit Texture(const std::string &path, GLenum type, GLint lod, GLint border);
+
+    void genMipmaps();
+
+    void setRenderHints(std::unordered_map<GLenum, GLint> hints);
+
+    void destroy();
+
+    void bind(GLuint slot = 0) const;
+
+    void unbind() const;
 };
 
 class VertexBuffer {

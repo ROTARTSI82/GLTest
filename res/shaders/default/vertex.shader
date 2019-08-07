@@ -1,7 +1,13 @@
-uniform vec4 u_PMult;
-uniform vec4 u_POffset;
+#version 120
 
-void main()
-{
-	gl_Position = ftransform() * u_PMult + u_POffset;
+attribute vec4 coord;
+attribute vec2 texCoord;
+
+varying vec2 v_TexCoord;
+
+uniform mat4 u_MVP;
+
+void main() {
+    gl_Position = u_MVP * coord;
+    v_TexCoord = texCoord;
 }

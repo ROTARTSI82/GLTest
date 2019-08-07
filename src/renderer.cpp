@@ -1,3 +1,5 @@
+#include <utility>
+
 //
 // Created by Grant on 2019-08-05.
 //
@@ -13,7 +15,7 @@ void flushGLErrors() {
 }
 
 
-VertexBuffer::VertexBuffer(GLsizeiptr size, const GLvoid *data, GLenum usage) {
+VertexBuffer::VertexBuffer(GLsizeiptr size, const GLvoid *data, GLenum usage) : id(0) {
     glGenBuffers(1, &id);
     glBindBuffer(GL_ARRAY_BUFFER, id);
     glBufferData(GL_ARRAY_BUFFER, size, data, usage);
@@ -30,7 +32,7 @@ void VertexBuffer::unbind() const {
 /*
  * NOTE: The data type of IndexBuffers is hardcoded to be GLuint (or unsigned int). VertexBuffers can have varying types.
  */
-IndexBuffer::IndexBuffer(GLsizei count, const GLuint *data, GLenum usage) {
+IndexBuffer::IndexBuffer(GLsizei count, const GLuint *data, GLenum usage) : id(0) {
     glGenBuffers(1, &id);
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, id);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(GLuint), data, usage);
@@ -146,19 +148,31 @@ void ShaderProgram::unbind() const {
     glUseProgram(0);
 }
 
-void ShaderProgram::setUniform4f(const std::string &name, float f0, float f1, float f2, float f3) {
+GLint ShaderProgram::getUniformLoc(const std::string &name) {
     if (uniforms.find(name) == uniforms.end()) {
         GLint uni = glGetUniformLocation(id, name.c_str());
         if (uni == -1) {
             std::cerr << "[WARNING]: Uniform " << name << " doesn't exist!" << std::endl;
-            return;
+            return -1;
         }
         uniforms[name] = uni;
     }
-    glUniform4f(uniforms[name], f0, f1, f2, f3);
+    return uniforms[name];
 }
 
-VertexArray::VertexArray() {
+void ShaderProgram::setUniform4f(const std::string &name, float f0, float f1, float f2, float f3) {
+    glUniform4f(getUniformLoc(name), f0, f1, f2, f3);
+}
+
+void ShaderProgram::setUniform1i(const std::string &name, int v) {
+    glUniform1i(getUniformLoc(name), v);
+}
+
+void ShaderProgram::setUniformMat4f(const std::string &name, glm::mat4 &mat4, GLboolean transpose) {
+    glUniformMatrix4fv(getUniformLoc(name), 1, transpose, &mat4[0][0]);
+}
+
+VertexArray::VertexArray() : id(0) {
     glGenVertexArrays(1, &id);
     glBindVertexArray(id);
 }
@@ -201,4 +215,51 @@ void IndexBuffer::destroy() {
 
 void VertexArray::destroy() {
     glDeleteVertexArrays(1, &id);
+}
+
+Texture::Texture(const std::string &path, GLenum type, GLint lod, GLint border) : localBuf(nullptr), width(0),
+                                                                                  height(0), bits(0), id(0) {
+    this->fp = path;
+    this->textureType = type;
+
+    localBuf = stbi_load(path.c_str(), &width, &height, &bits, 4); // 4 channels for RGBA
+
+    glGenTextures(1, &id);
+    bind();
+
+    setRenderHints({{GL_TEXTURE_MIN_FILTER, GL_LINEAR},
+                    {GL_TEXTURE_MAG_FILTER, GL_LINEAR}}); // DEFAULT VALUES
+    // {GL_TEXTURE_WARP_S, GL_CLAMP}, {GL_TEXTURE_WARP_T, GL_CLAMP}}); // These for some reason don't work :(
+
+    glTexImage2D(type, lod, GL_RGBA8, width, height, border, GL_RGBA, GL_UNSIGNED_BYTE, localBuf);
+
+    if (localBuf) {
+        stbi_image_free(localBuf);
+    }
+}
+
+void Texture::bind(GLuint slot) const {
+    glActiveTexture(GL_TEXTURE0 + slot);
+    glBindTexture(textureType, id);
+}
+
+void Texture::unbind() const {
+    glBindTexture(textureType, id);
+}
+
+void Texture::destroy() {
+    glDeleteTextures(1, &id);
+}
+
+void Texture::genMipmaps() {
+    bind();
+    glGenerateMipmap(textureType);
+}
+
+void Texture::setRenderHints(std::unordered_map<GLenum, GLint> hints) {
+    bind();
+
+    for (std::pair<GLenum, GLint> hint : hints) {
+        glTexParameteri(textureType, hint.first, hint.second);
+    }
 }
