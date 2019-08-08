@@ -1,5 +1,3 @@
-#include <utility>
-
 //
 // Created by Grant on 2019-08-05.
 //
@@ -238,12 +236,14 @@ Texture::Texture(const std::string &path, GLenum type, GLint lod, GLint border) 
     }
 }
 
-void Texture::bind(GLuint slot) const {
-    glActiveTexture(GL_TEXTURE0 + slot);
+void Texture::bind(GLuint texSlot) {
+    this->slot = texSlot;
+    glActiveTexture(GL_TEXTURE0 + texSlot);
     glBindTexture(textureType, id);
 }
 
 void Texture::unbind() const {
+    glActiveTexture(GL_TEXTURE0 + slot);
     glBindTexture(textureType, id);
 }
 

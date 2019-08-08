@@ -1,10 +1,18 @@
 #include "renderer.cpp"
 
-float scrollY = 0;
+#ifdef __APPLE__
+#define GL_SILENCE_DEPRECATION
+#endif
 
+// [Win32] Our example includes a copy of glfw3.lib pre-compiled with VS2010 to maximize ease of testing and compatibility with old VS compilers.
+// To link with VS2010-era libraries, VS2015+ requires linking with legacy_stdio_definitions.lib, which we do using this pragma.
+// Your own project should not be affected, as you are likely to link with a newer binary of GLFW that is adequate for your version of Visual Studio.
+#if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
+#pragma comment(lib, "legacy_stdio_definitions")
+#endif
 
-void scrollCallback(GLFWwindow *win, double x, double y) {
-    scrollY = y;
+static void glfw_error_callback(int error, const char *description) {
+    std::cerr << "[GLFW Error [" << error << "]]: " << description << std::endl;
 }
 
 
@@ -12,7 +20,7 @@ int main(void) {
 //    std::uniform_real_distribution<double> unif(0, 1);
 //    std::default_random_engine randEngine;
 
-    GLFWwindow *window;
+    glfwSetErrorCallback(glfw_error_callback);
 
     /* Initialize the library */
     if (!glfwInit()) {
@@ -20,12 +28,8 @@ int main(void) {
         return 1;
     }
 
-    glfwWindowHint(GLFW_VERSION_MAJOR, 2);
-    glfwWindowHint(GLFW_VERSION_MINOR, 1);
-//    glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_COMPAT_PROFILE);
-
     /* Create a windowed mode window and its OpenGL context */
-    window = glfwCreateWindow(960, 540, "Hello World", NULL, NULL);
+    GLFWwindow *window = glfwCreateWindow(960, 540, "Hello World", NULL, NULL);
 
     if (!window) {
         std::cerr << "Failed to create GLFW window! (window=" << window << ")" << std::endl;
@@ -38,8 +42,6 @@ int main(void) {
     glfwMakeContextCurrent(window);
     glfwSwapInterval(1);
 
-    glfwSetScrollCallback(window, scrollCallback);
-
     glewExperimental = GL_TRUE; // Needed to use VAOs
     GLenum glewState = glewInit();
     if (glewState != GLEW_OK) {
@@ -47,7 +49,9 @@ int main(void) {
         return 1;
     }
 
-    std::cout << "Successfully initialized OpenGL (with GLFW & GLEW) version " << glGetString(GL_VERSION) << std::endl;
+
+    std::cout << "Successfully initialized OpenGL (with GLFW, GLEW, GLM, IMGUI, and STB) version "
+              << glGetString(GL_VERSION) << std::endl;
 
     /* Loop until the user closes the window */
     float x = 0.5f;
@@ -119,15 +123,10 @@ int main(void) {
 
     IndexBuffer ibo(24, index, GL_STATIC_DRAW);
 
-    // glm::mat4 projectionMat = glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f);
-
-    // 45 deg FOV, 4:3 aspect ratio, display range 0.1 - 100 uints (anything outside range is culled)
     glm::mat4 projectionMat;
 
-    // Transformations for the veiw.
     glm::mat4 viewMat;
 
-    // Transformations for the models
     glm::mat4 modelMat = glm::mat4(1.0f); // Model is at origin. No need for further transformations.
 
     glm::mat4 mvp = projectionMat * viewMat * modelMat;
@@ -135,6 +134,7 @@ int main(void) {
     ShaderProgram sp("./res/shaders/default");
     sp.bind();
 
+    ImVec4 tint = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
     sp.setUniform4f("u_Tint", 0, 0, 0, 0);
     sp.setUniform4f("u_Mult", 1, 1, 1, 1);
 
@@ -153,7 +153,6 @@ int main(void) {
     tex2.genMipmaps();
 
     tex.bind(0);
-    tex2.bind(1);
 
     Camera player(glm::vec3(0, 0, 0), glm::vec2(0, 0), window);
 
@@ -166,19 +165,29 @@ int main(void) {
 
     float deltaTime;
 
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO &io = ImGui::GetIO();
+    (void) io;
+
+    ImGui::StyleColorsClassic();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL2_Init();
+
+    bool demo = false;
+
+    float fov = 70;
+
+//    io.Fonts->AddFontDefault();
+
     while (!glfwWindowShouldClose(window)) {
         double now = glfwGetTime();
         deltaTime = float(now - lastFrame);
         lastFrame = now;
 
-
         flushGLErrors();
-        /* Render here */
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        glClearColor(0.25f, 0.25f, 1, 1);
-
-
-        ibo.draw(GL_QUADS);
 
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
             player.move(speed, 0, deltaTime);
@@ -220,29 +229,67 @@ int main(void) {
             player.position -= glm::vec3(0, deltaTime * speed, 0);
         }
 
-        projectionMat = player.getProjection(45 - 5 * scrollY);
+
+        counter++;
+        if (counter > 120) {
+            counter = 0;
+        }
+        (counter > 60 ? tex : tex2).bind(0);
+
+
+        projectionMat = player.getProjection(fov);
         viewMat = player.getView();
 
         mvp = projectionMat * viewMat * modelMat;
         sp.setUniformMat4f("u_MVP", mvp);
+        sp.setUniform4f("u_Tint", tint.x, tint.y, tint.z, tint.w);
+
+
+        ImGui_ImplOpenGL2_NewFrame();
+        ImGui_ImplGlfw_NewFrame();
+        ImGui::NewFrame();
+
+        if (demo) {
+            ImGui::ShowDemoWindow(&demo);
+        }
+
+        {
+            ImGui::Begin("Hello, world!");
+            ImGui::ColorEdit3("Tint", (float *) &tint);
+            ImGui::SliderFloat("FOV", &fov, 10, 100);
+            ImGui::Checkbox("Show Demo", &demo);
+            ImGui::SameLine();
+            ImGui::Text("| Animation Cycle: %i", counter);
+
+            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
+                        ImGui::GetIO().Framerate);
+            ImGui::End();
+        }
+
+
+        ImGui::Render();
+
+        glClearColor(0.25f, 0.25f, 1, 1);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        ibo.draw(GL_QUADS);
+
+        va.unbind();
+        buf.unbind();
+        ibo.unbind();
+        sp.unbind();
+
+        ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+
+        sp.bind();
+        ibo.bind();
+        va.bind();
 
         /* Swap front and back buffers */
         glfwSwapBuffers(window);
 
         /* Poll for and process events */
         glfwPollEvents();
-
-//        int winW, winH;
-//        glfwGetWindowSize(window, &winW, &winH);
-//        mvp = glm::ortho(0.0f, (float) winW, (float) winH, 0.0f, 1.0f, -1.0f) * viewMat * modelMat;
-//        sp.setUniformMat4f("u_MVP", mvp);
-
-        counter++;
-        if (counter > 120) {
-            counter = 0;
-        }
-
-        sp.setUniform1i("u_Texture", (counter > 60 ? 0 : 1));
     }
 
     sp.destroy();
@@ -251,7 +298,12 @@ int main(void) {
     ibo.destroy();
     tex.destroy();
 
+    ImGui_ImplOpenGL2_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
     flushGLErrors();
+    glfwDestroyWindow(window);
     glfwTerminate();
     std::cout << "App stopped without errors." << std::endl;
     return 0;

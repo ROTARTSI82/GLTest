@@ -1,8 +1,10 @@
 //
 // Created by Grant on 2019-08-05.
 //
-
 #pragma once
+
+#ifndef GRANT_RENDERER_H_DEFINED
+#define GRANT_RENDERER_H_DEFINED
 
 #define STB_IMAGE_IMPLEMENTATION
 
@@ -11,14 +13,29 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
+#include <utility>
 #include <iostream>
 #include <unordered_map>
 #include <fstream>
 #include <vector>
 #include <string>
 
+#include <stdio.h>
+
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+
+#include "imgui.h"
+#include "imgui_impl_opengl2.h"
+#include "imgui_impl_glfw.h"
+
+#include "imgui.cpp"
+#include "imgui_impl_glfw.cpp"
+#include "imgui_impl_opengl2.cpp"
+#include "imgui_draw.cpp"
+#include "imgui_widgets.cpp"
+#include "imgui_demo.cpp"
+
 
 std::unordered_map<std::string, GLuint> SHADER_TYPES = {
         {"fragment-shader", GL_FRAGMENT_SHADER},
@@ -108,6 +125,7 @@ class Texture {
 public:
     GLenum textureType;
     GLuint id;
+    GLuint slot;
     std::string fp;
     unsigned char *localBuf;
     int width, height, bits;
@@ -120,7 +138,7 @@ public:
 
     void destroy();
 
-    void bind(GLuint slot = 0) const;
+    void bind(GLuint slot = 0);
 
     void unbind() const;
 };
@@ -163,3 +181,5 @@ public:
 };
 
 void flushGLErrors();
+
+#endif

@@ -46,6 +46,7 @@
 				<Compiler>
 					<Add directory="/Users/Grant/Desktop/CLion/GLTest/include"/>
 					<Add directory="/Users/Grant/Desktop/CLion/GLTest/src"/>
+					<Add directory="/Users/Grant/Desktop/CLion/GLTest/include/imgui"/>
 					<Add directory="/Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/OpenGL.framework"/>
 				</Compiler>
 				<MakeCommands>
@@ -64,6 +65,7 @@
 				<Compiler>
 					<Add directory="/Users/Grant/Desktop/CLion/GLTest/include"/>
 					<Add directory="/Users/Grant/Desktop/CLion/GLTest/src"/>
+					<Add directory="/Users/Grant/Desktop/CLion/GLTest/include/imgui"/>
 					<Add directory="/Library/Developer/CommandLineTools/SDKs/MacOSX10.14.sdk/System/Library/Frameworks/OpenGL.framework"/>
 				</Compiler>
 				<MakeCommands>
