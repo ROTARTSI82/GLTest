@@ -3,5 +3,5 @@
 # Multiple shaders of the same type are supported. Just define it using
 # shaderType: file.shader
 
-vertex-shader: vertex.shader
-fragment-shader: fragment.shader
+vertex-shader: vertex.vsh
+fragment-shader: fragment.fsh

@@ -122,14 +122,10 @@ int main(void) {
     // glm::mat4 projectionMat = glm::ortho(-1.0f, 1.0f, 1.0f, -1.0f, -1.0f, 1.0f);
 
     // 45 deg FOV, 4:3 aspect ratio, display range 0.1 - 100 uints (anything outside range is culled)
-    glm::mat4 projectionMat = glm::perspective(glm::radians(45.0f), (float) 960 / (float) 540, 0.1f, 100.0f);
+    glm::mat4 projectionMat;
 
     // Transformations for the veiw.
-    glm::mat4 viewMat = glm::lookAt(
-            glm::vec3(5, 2.5f, 2.5f), // Camera location
-            glm::vec3(0, 0, 0), // Point to look at
-            glm::vec3(0, 1, 0) // Up vector
-    );
+    glm::mat4 viewMat;
 
     // Transformations for the models
     glm::mat4 modelMat = glm::mat4(1.0f); // Model is at origin. No need for further transformations.
@@ -139,25 +135,36 @@ int main(void) {
     ShaderProgram sp("./res/shaders/default");
     sp.bind();
 
+    sp.setUniform4f("u_Tint", 0, 0, 0, 0);
+    sp.setUniform4f("u_Mult", 1, 1, 1, 1);
+
     sp.setUniform1i("u_Texture", 0);
     sp.setUniformMat4f("u_MVP", mvp);
 
-    stbi_set_flip_vertically_on_load(0); // Loading PNGs requires this or else they're upside-down :(
-    Texture tex("./res/textures/tex.png", GL_TEXTURE_2D, 0, 0);
+    stbi_set_flip_vertically_on_load(1); // Loading PNGs requires this or else they're upside-down :(
+    Texture tex("./res/textures/tex0.png", GL_TEXTURE_2D, 0, 0);
+    tex.setRenderHints({{GL_TEXTURE_MIN_FILTER, GL_NEAREST},
+                        {GL_TEXTURE_MAG_FILTER, GL_NEAREST}}); // Don't blur the textures!
     tex.genMipmaps();
 
-    glm::vec3 position = glm::vec3(0, 0, 0);
-    glm::vec2 lookAngle = glm::vec2(0, 0);
-    glm::vec2 scrCenter = glm::vec2(960 / 2, 540 / 2);
+    Texture tex2("./res/textures/tex1.png", GL_TEXTURE_2D, 0, 0);
+    tex2.setRenderHints({{GL_TEXTURE_MIN_FILTER, GL_NEAREST},
+                         {GL_TEXTURE_MAG_FILTER, GL_NEAREST}});
+    tex2.genMipmaps();
+
+    tex.bind(0);
+    tex2.bind(1);
+
+    Camera player(glm::vec3(0, 0, 0), glm::vec2(0, 0), window);
 
     float speed = 3;
     float sensitivity = 3;
 
     double lastFrame = glfwGetTime();
 
-    float deltaTime;
+    unsigned int counter = 0;
 
-    unsigned int delay = 10000000 / 60;
+    float deltaTime;
 
     while (!glfwWindowShouldClose(window)) {
         double now = glfwGetTime();
@@ -173,62 +180,48 @@ int main(void) {
 
         ibo.draw(GL_QUADS);
 
-        glm::vec3 direction(
-                cos(lookAngle.y) * sin(lookAngle.x),
-                sin(lookAngle.y),
-                cos(lookAngle.y) * cos(lookAngle.x)
-        );
-
-        glm::vec3 right = glm::vec3(
-                sin(lookAngle.x - 3.14f / 2.0f),
-                0,
-                cos(lookAngle.x - 3.14f / 2.0f)
-        );
-
-        glm::vec3 up = glm::cross(right, direction);
-
         if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-            position += glm::vec3(sin(lookAngle.x), 0, cos(lookAngle.x)) * deltaTime * speed;
+            player.move(speed, 0, deltaTime);
         }
 // Move backward
         if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-            position -= glm::vec3(sin(lookAngle.x), 0, cos(lookAngle.x)) * deltaTime * speed;
+            player.move(-speed, 0, deltaTime);
         }
 // Strafe right
         if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-            position += right * deltaTime * speed;
+            player.move(0, speed, deltaTime);
         }
 // Strafe left
         if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-            position -= right * deltaTime * speed;
+            player.move(0, -speed, deltaTime);
         }
 
         if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS) {
-            lookAngle.y += sensitivity * deltaTime;
+            player.look(glm::vec2(0, sensitivity), deltaTime);
         }
 // Move backward
         if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS) {
-            lookAngle.y -= sensitivity * deltaTime;
+            player.look(glm::vec2(0, -sensitivity), deltaTime);
         }
 // Strafe right
         if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS) {
-            lookAngle.x -= sensitivity * deltaTime;
+            player.look(glm::vec2(-sensitivity, 0), deltaTime);
         }
 // Strafe left
         if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS) {
-            lookAngle.x += sensitivity * deltaTime;
+            player.look(glm::vec2(sensitivity, 0), deltaTime);
         }
 
         if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS) {
-            position += glm::vec3(0, deltaTime * speed, 0);
+            player.position += glm::vec3(0, deltaTime * speed, 0);
         }
 
         if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS) {
-            position -= glm::vec3(0, deltaTime * speed, 0);
+            player.position -= glm::vec3(0, deltaTime * speed, 0);
         }
 
-        projectionMat = glm::perspective(glm::radians(45.0f - 5 * scrollY), (float) 960 / (float) 540, 0.1f, 100.0f);
-        viewMat = glm::lookAt(position, position + direction, up);
+        projectionMat = player.getProjection(45 - 5 * scrollY);
+        viewMat = player.getView();
 
         mvp = projectionMat * viewMat * modelMat;
         sp.setUniformMat4f("u_MVP", mvp);
@@ -243,6 +236,13 @@ int main(void) {
 //        glfwGetWindowSize(window, &winW, &winH);
 //        mvp = glm::ortho(0.0f, (float) winW, (float) winH, 0.0f, 1.0f, -1.0f) * viewMat * modelMat;
 //        sp.setUniformMat4f("u_MVP", mvp);
+
+        counter++;
+        if (counter > 120) {
+            counter = 0;
+        }
+
+        sp.setUniform1i("u_Texture", (counter > 60 ? 0 : 1));
     }
 
     sp.destroy();

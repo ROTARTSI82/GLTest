@@ -263,3 +263,49 @@ void Texture::setRenderHints(std::unordered_map<GLenum, GLint> hints) {
         glTexParameteri(textureType, hint.first, hint.second);
     }
 }
+
+Camera::Camera(glm::vec3 pos, glm::vec2 look, GLFWwindow *window) {
+    win = window;
+    lookAngle = look;
+    position = pos;
+
+    lookDirection = glm::vec3(cos(lookAngle.y) * sin(lookAngle.x), sin(lookAngle.y),
+                              cos(lookAngle.y) * cos(lookAngle.x));
+
+    right = glm::vec3(sin(lookAngle.x - pi / 2.0f), 0, cos(lookAngle.x - pi / 2.0f));
+    forward = glm::vec3(sin(lookAngle.x), 0, cos(lookAngle.x));
+    up = glm::cross(right, lookDirection);
+}
+
+void Camera::move(float forwardAmount, float rightAmount, float deltaTime) {
+    position += forward * forwardAmount * deltaTime;
+    position += right * rightAmount * deltaTime;
+}
+
+void Camera::look(glm::vec2 amount, float deltaTime) {
+    lookAngle += amount * deltaTime;
+
+    if (lookAngle.y > pi / 2) {
+        lookAngle.y = pi / 2;
+    } else if (lookAngle.y < -pi / 2) {
+        lookAngle.y = -pi / 2;
+    }
+
+    lookDirection = glm::vec3(cos(lookAngle.y) * sin(lookAngle.x), sin(lookAngle.y),
+                              cos(lookAngle.y) * cos(lookAngle.x));
+
+    right = glm::vec3(sin(lookAngle.x - pi / 2.0f), 0, cos(lookAngle.x - pi / 2.0f));
+    forward = glm::vec3(sin(lookAngle.x), 0, cos(lookAngle.x));
+    up = glm::cross(right, lookDirection);
+}
+
+glm::mat4 Camera::getProjection(float fov, float near, float far) {
+    int width, height;
+    glfwGetWindowSize(win, &width, &height);
+
+    return glm::perspective(glm::radians(fov), (float) width / (float) height, near, far);
+}
+
+glm::mat4 Camera::getView() {
+    return glm::lookAt(position, position + lookDirection, up);
+}

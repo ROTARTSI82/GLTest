@@ -17,8 +17,6 @@
 #include <vector>
 #include <string>
 
-#include <unistd.h>
-
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
@@ -31,6 +29,8 @@ std::unordered_map<GLenum, GLsizei> SIZES = {
         {GL_FLOAT,        sizeof(GLfloat)},
         {GL_UNSIGNED_INT, sizeof(GLuint)}
 };
+
+double pi = atan(1) * 4;
 
 struct VBAttribute {
 public:
@@ -138,6 +138,28 @@ public:
     void setLayout(VBLayout layout, VertexArray vertArr);
 
     void destroy();
+};
+
+class Camera {
+public:
+    glm::vec3 up;
+    glm::vec3 right;
+    glm::vec3 forward;
+
+    glm::vec3 lookDirection;
+    glm::vec3 position;
+    glm::vec2 lookAngle;
+    GLFWwindow *win;
+
+    Camera(glm::vec3 pos, glm::vec2 look, GLFWwindow *window);
+
+    glm::mat4 getProjection(float fov, float near = 0.1f, float far = 100.0f);
+
+    glm::mat4 getView();
+
+    void look(glm::vec2 amount, float deltaTime);
+
+    void move(float forward, float right, float deltaTime);
 };
 
 void flushGLErrors();
