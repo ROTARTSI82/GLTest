@@ -11,7 +11,7 @@
 #pragma comment(lib, "legacy_stdio_definitions")
 #endif
 
-static void glfw_error_callback(int error, const char *description) {
+static void glfwErrCallback(int error, const char *description) {
     std::cerr << "[GLFW Error [" << error << "]]: " << description << std::endl;
 }
 
@@ -20,7 +20,7 @@ int main(void) {
 //    std::uniform_real_distribution<double> unif(0, 1);
 //    std::default_random_engine randEngine;
 
-    glfwSetErrorCallback(glfw_error_callback);
+    glfwSetErrorCallback(glfwErrCallback);
 
     /* Initialize the library */
     if (!glfwInit()) {
@@ -40,13 +40,15 @@ int main(void) {
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1);
+//    glfwSwapInterval(1);
 
     glewExperimental = GL_TRUE; // Needed to use VAOs
-    GLenum glewState = glewInit();
-    if (glewState != GLEW_OK) {
-        std::cerr << "Failed to initialize GLEW! (glewInit() returned " << glewState << ")" << std::endl;
-        return 1;
+    {
+        GLenum glewState = glewInit();
+        if (glewState != GLEW_OK) {
+            std::cerr << "Failed to initialize GLEW! (glewInit() returned " << glewState << ")" << std::endl;
+            return 1;
+        }
     }
 
 
@@ -81,7 +83,7 @@ int main(void) {
 
     unsigned int index[] = {
             0, 1, 2, 3,
-            4, 5, 6, 7,
+            7, 6, 5, 4,
 
             9, 5, 6, 8, // (x, x; 0, 0), (x, x; 1, 0), (x, -x; 1, 1), (x, -x; 0, 1)
             4, 5, 10, 11, // (-x, x, -x);(0, 0), (x, x, -x);(1, 0), (x, x, x);(1, 1), (-x, x, x);(0, 1)
@@ -96,10 +98,9 @@ int main(void) {
     glEnable(GL_DEPTH_TEST);
     glDepthFunc(GL_LESS);
 
-    // Culling is completely broken. ;(
-
-//    glEnable(GL_CULL_FACE);
-//    glCullFace(GL_FRONT_AND_BACK);
+    glFrontFace(GL_CW);
+    glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
 
     VertexArray va;
     va.bind();
@@ -122,6 +123,7 @@ int main(void) {
 //    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, (const void *) 0);
 
     IndexBuffer ibo(24, index, GL_STATIC_DRAW);
+    ibo.bind();
 
     glm::mat4 projectionMat;
 
@@ -160,8 +162,6 @@ int main(void) {
     float sensitivity = 3;
 
     double lastFrame = glfwGetTime();
-
-    unsigned int counter = 0;
 
     float deltaTime;
 
@@ -230,18 +230,9 @@ int main(void) {
         }
 
 
-        counter++;
-        if (counter > 120) {
-            counter = 0;
-        }
-        (counter > 60 ? tex : tex2).bind(0);
-
-
         projectionMat = player.getProjection(fov);
         viewMat = player.getView();
 
-        mvp = projectionMat * viewMat * modelMat;
-        sp.setUniformMat4f("u_MVP", mvp);
         sp.setUniform4f("u_Tint", tint.x, tint.y, tint.z, tint.w);
 
 
@@ -258,8 +249,6 @@ int main(void) {
             ImGui::ColorEdit3("Tint", (float *) &tint);
             ImGui::SliderFloat("FOV", &fov, 10, 100);
             ImGui::Checkbox("Show Demo", &demo);
-            ImGui::SameLine();
-            ImGui::Text("| Animation Cycle: %i", counter);
 
             ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / ImGui::GetIO().Framerate,
                         ImGui::GetIO().Framerate);
@@ -272,6 +261,19 @@ int main(void) {
         glClearColor(0.25f, 0.25f, 1, 1);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
+        glDisable(GL_CULL_FACE);
+        modelMat = glm::translate(glm::mat4(1.0), player.position);
+        modelMat *= glm::scale(glm::mat4(1.0), glm::vec3(50, 50, 50));
+        mvp = projectionMat * viewMat * modelMat;
+        tex.bind(0);
+        sp.setUniformMat4f("u_MVP", mvp);
+        ibo.draw(GL_QUADS);
+
+        glEnable(GL_CULL_FACE);
+        modelMat = glm::mat4(1.0);
+        mvp = projectionMat * viewMat * modelMat;
+        tex2.bind(0);
+        sp.setUniformMat4f("u_MVP", mvp);
         ibo.draw(GL_QUADS);
 
         va.unbind();

@@ -147,27 +147,39 @@ void ShaderProgram::unbind() const {
 }
 
 GLint ShaderProgram::getUniformLoc(const std::string &name) {
-    if (uniforms.find(name) == uniforms.end()) {
-        GLint uni = glGetUniformLocation(id, name.c_str());
-        if (uni == -1) {
-            std::cerr << "[WARNING]: Uniform " << name << " doesn't exist!" << std::endl;
-            return -1;
-        }
-        uniforms[name] = uni;
+    auto loc = uniforms.find(name);
+    if (loc != uniforms.end()) {  // It's already cached. No need to access GPU again.
+        return loc->second;
     }
-    return uniforms[name];
+
+    GLint uni = glGetUniformLocation(id, name.c_str());
+    if (uni == -1) {
+        std::cerr << "[WARNING]: Uniform " << name << " doesn't exist!" << std::endl;
+        return -1;
+    }
+    uniforms[name] = uni;
+    return uni;
 }
 
 void ShaderProgram::setUniform4f(const std::string &name, float f0, float f1, float f2, float f3) {
-    glUniform4f(getUniformLoc(name), f0, f1, f2, f3);
+    GLint loc = getUniformLoc(name);
+    if (loc != -1) {
+        glUniform4f(loc, f0, f1, f2, f3);
+    }
 }
 
 void ShaderProgram::setUniform1i(const std::string &name, int v) {
-    glUniform1i(getUniformLoc(name), v);
+    GLint loc = getUniformLoc(name);
+    if (loc != -1) {
+        glUniform1i(loc, v);
+    }
 }
 
 void ShaderProgram::setUniformMat4f(const std::string &name, glm::mat4 &mat4, GLboolean transpose) {
-    glUniformMatrix4fv(getUniformLoc(name), 1, transpose, &mat4[0][0]);
+    GLint loc = getUniformLoc(name);
+    if (loc != -1) {
+        glUniformMatrix4fv(loc, 1, transpose, &mat4[0][0]);
+    }
 }
 
 VertexArray::VertexArray() : id(0) {
