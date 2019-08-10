@@ -19,7 +19,7 @@ print_all_variables()
 
 add_executable(GLTest src/main.cpp)
 
-target_include_directories(GLTest PUBLIC include src include/imgui)
+target_include_directories(GLTest PUBLIC include)
 target_include_directories(GLTest PUBLIC ${OPENGL_INCLUDE_DIR})
 
 target_link_libraries(GLTest ${OPENGL_gl_LIBRARY})

@@ -12,6 +12,140 @@ void flushGLErrors() {
     }
 }
 
+void glfwErrCallback(int error, const char *description) {
+    std::cerr << "[GLFW Error [" << error << "]]: " << description << std::endl;
+}
+
+bool Renderer::init(const char *title, int x, int y, GLFWmonitor *monitor, GLFWwindow *share) {
+    glfwSetErrorCallback(glfwErrCallback);
+
+    /* Initialize the library */
+    if (!glfwInit()) {
+        std::cerr << "Failed to initialize GLFW!" << std::endl;
+        std::cerr << "Stopping!" << std::endl;
+        glfwTerminate();
+        return false;
+    }
+
+    /* Create a windowed mode window and its OpenGL context */
+    window = glfwCreateWindow(x, y, title, monitor, share);
+
+    if (!window) {
+        std::cerr << "Failed to create GLFW window! (window=" << window << ")" << std::endl;
+        std::cerr << "Stopping!" << std::endl;
+        glfwDestroyWindow(window);
+        glfwTerminate();
+        return false;
+    }
+
+    glfwMakeContextCurrent(window);
+
+    glewExperimental = GL_TRUE; // Needed to use VAOs
+    {
+        GLenum glewState = glewInit();
+        if (glewState != GLEW_OK) {
+            std::cerr << "Failed to initialize GLEW! (glewInit() returned " << glewState << ")" << std::endl;
+            std::cerr << "Stopping!" << std::endl;
+            glfwDestroyWindow(window);
+            glfwTerminate();
+            return false;
+        }
+    }
+
+
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+//    ImGuiIO &io = ImGui::GetIO();
+//    (void) io;
+
+    ImGui::StyleColorsClassic();
+
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
+    ImGui_ImplOpenGL2_Init();
+
+
+    glEnable(GL_BLEND);
+    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+    glBlendEquation(GL_ADD);
+
+    glEnable(GL_DEPTH_TEST);
+    glDepthFunc(GL_LESS);
+
+    glCullFace(GL_BACK);
+    glEnable(GL_CULL_FACE);
+
+    return true;
+}
+
+void Renderer::flip() {
+    glfwSwapBuffers(window);
+    glfwPollEvents();
+}
+
+void Renderer::quit() {
+
+    for (std::pair<std::string, GameObject *> object : gameObjects) {
+        object.second->texture->destroy();
+        object.second->shader->destroy();
+
+        object.second->model->ibo->destroy();
+        object.second->model->vbo->destroy();
+        object.second->model->vao->destroy();
+    }
+
+    ImGui_ImplOpenGL2_Shutdown();
+    ImGui_ImplGlfw_Shutdown();
+    ImGui::DestroyContext();
+
+    flushGLErrors();
+    glfwDestroyWindow(window);
+    glfwTerminate();
+}
+
+void Renderer::drawImGui() {
+
+    ImGui::Render();
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glUseProgram(0);
+    glBindVertexArray(0);
+
+    ImGui_ImplOpenGL2_RenderDrawData(ImGui::GetDrawData());
+}
+
+void Renderer::addGameObject(const std::string &name, GameObject *obj) {
+    gameObjects[name] = obj;
+}
+
+void Renderer::drawObject(const std::string &name) {
+    if (gameObjects.find(name) != gameObjects.end()) {
+        GameObject *obj = gameObjects[name];
+        obj->texture->bind(0);
+        obj->shader->bind();
+        obj->model->vao->bind();
+        obj->model->ibo->bind();
+
+        glm::mat4 mvp = proj * view * obj->transforms;
+        obj->shader->setUniformMat4f("u_MVP", mvp);
+
+        glDrawElements(obj->model->drawMode, obj->model->ibo->count, GL_UNSIGNED_INT, nullptr);
+    } else {
+        std::cerr << "GameObject '" << name << "' doesn't exist! Skipping draw call..." << std::endl;
+    }
+}
+
+void Renderer::clear(GLclampf r, GLclampf g, GLclampf b, GLclampf a) {
+    flushGLErrors();
+
+    glClearColor(r, g, b, a);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    ImGui_ImplOpenGL2_NewFrame();
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
+}
 
 VertexBuffer::VertexBuffer(GLsizeiptr size, const GLvoid *data, GLenum usage) : id(0) {
     glGenBuffers(1, &id);
@@ -36,10 +170,6 @@ IndexBuffer::IndexBuffer(GLsizei count, const GLuint *data, GLenum usage) : id(0
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, count * sizeof(GLuint), data, usage);
 
     this->count = count;
-}
-
-void IndexBuffer::draw(GLenum mode) const {
-    glDrawElements(mode, count, GL_UNSIGNED_INT, nullptr);
 }
 
 void IndexBuffer::bind() const {

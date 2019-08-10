@@ -25,27 +25,39 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-#include "imgui.h"
-#include "imgui_impl_opengl2.h"
-#include "imgui_impl_glfw.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_opengl2.h"
+#include "imgui/imgui_impl_glfw.h"
 
-#include "imgui.cpp"
-#include "imgui_impl_glfw.cpp"
-#include "imgui_impl_opengl2.cpp"
-#include "imgui_draw.cpp"
-#include "imgui_widgets.cpp"
-#include "imgui_demo.cpp"
+#include "imgui/imgui.cpp"
+#include "imgui/imgui_impl_glfw.cpp"
+#include "imgui/imgui_impl_opengl2.cpp"
+#include "imgui/imgui_draw.cpp"
+#include "imgui/imgui_widgets.cpp"
+#include "imgui/imgui_demo.cpp"
+
+
+#ifdef __APPLE__
+#define GL_SILENCE_DEPRECATION
+#endif
+
+#if defined(_MSC_VER) && (_MSC_VER >= 1900) && !defined(IMGUI_DISABLE_WIN32_FUNCTIONS)
+#pragma comment(lib, "legacy_stdio_definitions")
+#endif
 
 
 std::unordered_map<std::string, GLuint> SHADER_TYPES = {
         {"fragment-shader", GL_FRAGMENT_SHADER},
-        {"vertex-shader",   GL_VERTEX_SHADER}
+        {"vertex-shader",   GL_VERTEX_SHADER},
+        {"geometry-shader", GL_GEOMETRY_SHADER}
 };
 
 std::unordered_map<GLenum, GLsizei> SIZES = {
         {GL_FLOAT,        sizeof(GLfloat)},
         {GL_UNSIGNED_INT, sizeof(GLuint)}
 };
+
+glm::mat4 IDENTITY_MAT4 = glm::mat4(1.0f);
 
 double pi = atan(1) * 4;
 
@@ -92,8 +104,6 @@ public:
     void bind() const;
 
     void unbind() const;
-
-    void draw(GLenum mode) const;
 
     void destroy();
 };
@@ -180,6 +190,50 @@ public:
     void move(float forward, float right, float deltaTime);
 };
 
+struct Model {
+public:
+    IndexBuffer *ibo;
+    VertexArray *vao;
+    GLenum drawMode;
+
+    // This is just for destroyin'
+    VertexBuffer *vbo;
+};
+
+struct GameObject {
+public:
+    Model *model;
+    ShaderProgram *shader;
+    Texture *texture;
+
+    glm::mat4 transforms = glm::mat4(1.0f);
+};
+
+class Renderer {
+public:
+    glm::mat4 view = glm::mat4(1.0f);
+    glm::mat4 proj = glm::mat4(1.0f);
+    GLFWwindow *window;
+    std::unordered_map<std::string, GameObject *> gameObjects;
+
+    bool init(const char *title, int x, int y, GLFWmonitor *monitor = nullptr, GLFWwindow *share = nullptr);
+
+    void quit();
+
+    void clear(GLclampf r, GLclampf g, GLclampf b, GLclampf a);
+
+    void addGameObject(const std::string &name, GameObject *obj);
+
+    void drawObject(const std::string &obj);
+
+    void drawImGui();
+
+    void flip();
+
+};
+
 void flushGLErrors();
+
+void glfwErrCallback(int error, const char *description);
 
 #endif

@@ -3,5 +3,6 @@
 # Multiple shaders of the same type are supported. Just define it using
 # shaderType: file.shader
 
+#geometry-shader: flip_quad.gsh
 vertex-shader: vertex.vsh
 fragment-shader: fragment.fsh
